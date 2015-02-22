@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">BluetoothPong2</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_game">GameActivity</string>
+    <string name="title_activity_bt_connect">BtConnectActivity</string>
+
+    % activity buttons and debug strings
+    <string name="button_1_main_menu">Listen</string>
+    <string name="button_2_main_menu">Connect</string>
+    <string name="button_3_main_menu">Play Against Self</string>
+    <string name="debug_main_menu">Connection Status: </string>
+</resources>

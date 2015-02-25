@@ -1,44 +1,72 @@
 package pw.dedominic.bluetoothpong2;
 
+import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
+
+import java.util.Set;
 
 
-public class BtConnectActivity extends ActionBarActivity
+public class BtConnectActivity extends ActionBarActivity implements AdapterView.OnItemClickListener
 {
+	private ArrayAdapter<String> mDeviceList;
+	private ListView mListView;
+	private BluetoothAdapter mBtAdapter;
 
 	@Override
-	protected void onCreate(Bundle savedInstanceState)
+	protected void onCreate(Bundle savedInstance)
 	{
-		super.onCreate(savedInstanceState);
+		super.onCreate(savedInstance);
 		setContentView(R.layout.activity_bt_connect);
-	}
+		setResult(Activity.RESULT_CANCELED);
 
+		mDeviceList = new ArrayAdapter<String>(this, R.layout.bt_text);
+		mListView = (ListView) findViewById(R.id.device_view);
 
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu)
-	{
-		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.menu_bt_connect, menu);
-		return true;
-	}
+		mListView.setAdapter(mDeviceList);
+		mListView.setOnItemClickListener(this);
 
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item)
-	{
-		// Handle action bar item clicks here. The action bar will
-		// automatically handle clicks on the Home/Up button, so long
-		// as you specify a parent activity in AndroidManifest.xml.
-		int id = item.getItemId();
+		// get paired devices
+		mBtAdapter = BluetoothAdapter.getDefaultAdapter();
+		Set<BluetoothDevice> mDeviceSet = mBtAdapter.getBondedDevices();
 
-		//noinspection SimplifiableIfStatement
-		if (id == R.id.action_settings)
+		if (mDeviceSet.size() > 0)
 		{
-			return true;
-		}
+			findViewById(R.id.device_text).setVisibility(View.VISIBLE);
 
-		return super.onOptionsItemSelected(item);
+			for (BluetoothDevice device : mDeviceSet)
+			{
+				mDeviceList.add(device.getName() + '\n' + device.getAddress());
+			}
+		}
+		else
+		{
+			mDeviceList.add("Please pair at least one bluetooth device\n");
+		}
+	}
+
+	public void onItemClick(AdapterView<?> av, View v, int arg2, long arg3)
+	{
+		mBtAdapter.cancelDiscovery();
+
+		// string from clicked menu choice
+		String value = ((TextView) v).getText().toString();
+
+		// extract mac address only, 17 chars after
+		String address = value.substring(value.length() - 17);
+
+		Intent intent = new Intent();
+		intent.putExtra(Constants.DEVICE_MAC, address);
+
+		setResult(Activity.RESULT_OK, intent);
+		finish();
 	}
 }

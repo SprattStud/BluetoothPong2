@@ -1,25 +1,30 @@
 package pw.dedominic.bluetoothpong2;
 
-import android.content.DialogInterface;
+import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
-import java.security.MessageDigestSpi;
-
-
-public class GameActivity extends ActionBarActivity implements View.OnClickListener
+public class GameActivity extends ActionBarActivity implements View.OnClickListener, SensorEventListener
 {
+	// bluetooth adapter & connection stats
+	private BluetoothAdapter mBtAdapter;
+	private int IS_CONNECT = 0;
+
 	// connection threads and communication handlers
 	private BluetoothService mConnectionManager;
-	private WriteHandler mWriteHandler;
-	private ReadHandler mReadHandler;
+	private WriteHandler mWriteHandler = new WriteHandler();
+	private ReadHandler mReadHandler = new ReadHandler();
 
 	// debug textview
 	private TextView mDebugView;
@@ -32,13 +37,30 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 		mDebugView = (TextView) findViewById(R.id.textView);
 		int connect_type = getIntent().getExtras().getInt(Constants.CONNECT_TYPE);
 
+		// start game button, hidden at start
+		Button button = (Button) findViewById(R.id.start_game_button);
+		button.setOnClickListener(this);
+
+		mBtAdapter = BluetoothAdapter.getDefaultAdapter();
+		if (!mBtAdapter.isEnabled())
+		{
+			int REQUEST_ENABLE_BT = 1;
+			Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+			startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+		}
+
+		mConnectionManager = new BluetoothService(mReadHandler);
+
 		if (connect_type == Constants.CONNECT_TO_HOST)
 		{
 			mDebugView.setText("Connecting...");
+			Intent intent = new Intent(this, BtConnectActivity.class);
+			startActivityForResult(intent, Constants.GET_MAC_ADDR);
 		}
 		else if (connect_type == Constants.LISTEN_FOR_CONNECT)
 		{
 			mDebugView.setText("Listening...");
+			mConnectionManager.listen();
 		}
 		else
 		{
@@ -46,7 +68,30 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 		}
 	}
 
+	public void onActivityResult(int req_code, int result_code, Intent data)
+	{
+		if (result_code == Activity.RESULT_OK && req_code == Constants.GET_MAC_ADDR)
+		{
+			String MAC_ADDR = data.getStringExtra(Constants.DEVICE_MAC);
+			mDebugView.setText(MAC_ADDR);
+			BluetoothDevice device = mBtAdapter.getRemoteDevice(MAC_ADDR);
+			mConnectionManager.join(device);
+		}
+	}
+
 	public void onClick(View v)
+	{
+		return;
+	}
+
+	@Override
+	public void onSensorChanged(SensorEvent e)
+	{
+		return;
+	}
+
+	@Override
+	public void onAccuracyChanged(Sensor sensor, int accuracy)
 	{
 		return;
 	}
@@ -59,37 +104,22 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 			return;
 		}
 	}
+
 	private class ReadHandler extends Handler
 	{
 		@Override
 		public void handleMessage(Message msg)
 		{
-			return;
+			switch (msg.what)
+			{
+				case Constants.DISCONNECTED:
+					setResult(Activity.RESULT_CANCELED);
+					finish();
+				case Constants.CONNECTED:
+					findViewById(R.id.start_game_button).setVisibility(View.VISIBLE);
+				case Constants.READY:
+					findViewById(R.id.start_game_button).setVisibility(View.GONE);
+			}
 		}
 	}
-
-//	@Override
-//	public boolean onCreateOptionsMenu(Menu menu)
-//	{
-//		// Inflate the menu; this adds items to the action bar if it is present.
-//		getMenuInflater().inflate(R.menu.menu_game, menu);
-//		return true;
-//	}
-//
-//	@Override
-//	public boolean onOptionsItemSelected(MenuItem item)
-//	{
-//		// Handle action bar item clicks here. The action bar will
-//		// automatically handle clicks on the Home/Up button, so long
-//		// as you specify a parent activity in AndroidManifest.xml.
-//		int id = item.getItemId();
-//
-//		//noinspection SimplifiableIfStatement
-//		if (id == R.id.action_settings)
-//		{
-//			return true;
-//		}
-//
-//		return super.onOptionsItemSelected(item);
-//	}
 }

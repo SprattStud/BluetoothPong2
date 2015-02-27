@@ -17,6 +17,11 @@ import android.widget.TextView;
 
 public class GameActivity extends ActionBarActivity implements View.OnClickListener, SensorEventListener
 {
+	public long delay = 0;
+
+	// button to start game
+	private Button button;
+
 	// bluetooth adapter & connection stats
 	private BluetoothAdapter mBtAdapter;
 	private int IS_CONNECT = 0;
@@ -38,7 +43,8 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 		int connect_type = getIntent().getExtras().getInt(Constants.CONNECT_TYPE);
 
 		// start game button, hidden at start
-		Button button = (Button) findViewById(R.id.start_game_button);
+		button = (Button) findViewById(R.id.start_game_button);
+		button.setVisibility(View.GONE);
 		button.setOnClickListener(this);
 
 		mBtAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -53,9 +59,10 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 
 		if (connect_type == Constants.CONNECT_TO_HOST)
 		{
-			mDebugView.setText("Connecting...");
-			Intent intent = new Intent(this, BtConnectActivity.class);
-			startActivityForResult(intent, Constants.GET_MAC_ADDR);
+			String MAC_ADDR = getIntent().getStringExtra(Constants.DEVICE_MAC);
+			BluetoothDevice device = mBtAdapter.getRemoteDevice(MAC_ADDR);
+			mConnectionManager.join(device);
+			mDebugView.setText("Connecting to: " + MAC_ADDR);
 		}
 		else if (connect_type == Constants.LISTEN_FOR_CONNECT)
 		{
@@ -68,20 +75,10 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 		}
 	}
 
-	public void onActivityResult(int req_code, int result_code, Intent data)
-	{
-		if (result_code == Activity.RESULT_OK && req_code == Constants.GET_MAC_ADDR)
-		{
-			String MAC_ADDR = data.getStringExtra(Constants.DEVICE_MAC);
-			mDebugView.setText(MAC_ADDR);
-			BluetoothDevice device = mBtAdapter.getRemoteDevice(MAC_ADDR);
-			mConnectionManager.join(device);
-		}
-	}
-
 	public void onClick(View v)
 	{
-		return;
+		delay = System.currentTimeMillis();
+		mConnectionManager.write("This is a test".getBytes());
 	}
 
 	@Override
@@ -111,15 +108,54 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 		public void handleMessage(Message msg)
 		{
 			switch (msg.what)
-			{
+{				case Constants.READING:
+					String message = new String((byte[])msg.obj, 0, msg.arg1);
+					if (message.equals("ACK"))
+					{
+						delay = System.currentTimeMillis() - delay;
+						mDebugView.setText(Long.toString(delay));
+					}
+					else
+					{
+						mDebugView.setText(message);
+						mConnectionManager.write("ACK".getBytes());
+					}
+
+					break;
 				case Constants.DISCONNECTED:
-					setResult(Activity.RESULT_CANCELED);
 					finish();
 				case Constants.CONNECTED:
-					findViewById(R.id.start_game_button).setVisibility(View.VISIBLE);
+					button.setVisibility(View.VISIBLE);
+					mDebugView.setText("Connected");
+					break;
 				case Constants.READY:
-					findViewById(R.id.start_game_button).setVisibility(View.GONE);
+					button.setVisibility(View.GONE);
+					break;
+
 			}
 		}
+	}
+
+	@Override
+	public void onStop()
+	{
+		super.onStop();
+		mConnectionManager.killAll();
+		this.finish();
+	}
+
+	@Override
+	public void onPause()
+	{
+		super.onPause();
+		mConnectionManager.killAll();
+		this.finish();
+	}
+
+	@Override
+	public void onBackPressed() {
+		super.onBackPressed();
+		mConnectionManager.killAll();
+		this.finish();
 	}
 }

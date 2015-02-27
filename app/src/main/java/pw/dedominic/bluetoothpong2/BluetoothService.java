@@ -62,6 +62,27 @@ public class BluetoothService
 		connected.start();
 	}
 
+	public void killAll()
+	{
+		if (listener != null)
+		{
+			listener.cancel();
+			listener = null;
+		}
+
+		if (joiner != null)
+		{
+			joiner.cancel();
+			joiner = null;
+		}
+
+		if (connected != null)
+		{
+			connected.cancel();
+			connected = null;
+		}
+	}
+
 	public void write(byte[] bytes)
 	{
 		if (connected == null)
@@ -211,7 +232,8 @@ public class BluetoothService
 				try
 				{
 					bytes_ret = in.read(buffer);
-					readHandle.obtainMessage(Constants.READING, bytes_ret, -1, buffer).sendToTarget();
+					readHandle.obtainMessage(Constants.READING, bytes_ret, -1,
+							buffer).sendToTarget();
 					// try to send bytes to activity using a message
 				}
 				catch (IOException e)

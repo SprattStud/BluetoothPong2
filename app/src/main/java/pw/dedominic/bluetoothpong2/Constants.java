@@ -18,18 +18,20 @@ public interface Constants
 	// handler messages - reading
 	public final int DISCONNECTED = 0;
 	public final int CONNECTED = 1;
-	public final int READY = 2;
-	public final int READING = 3;
+	public final int READY = 'r';
+	public final int BALLX_READ = 'x';
+	public final int BALLY_READ = 'y';
+	public final int BALL_ANG_READ = 'a';
+	public final int PADDLE_READ = 'p';
+	public final int GAME_OVER_READ = 'g';
 
 	// handler messages - writing
-	public final int GET_PADDLE_Y = 0;
-	public final int GET_BALL_X = 1;
-	public final int GET_BALL_Y = 2;
+	public final int GAME_OVER = -1;
+	public final int SEND_GAME_STATE = 0;
+	public final int SEND_PADDLE = 1;
+	public final int SEND_BALL_ANGLE = 2;
 
 	// GAME LAYOUT CONSTANTS
-	public static final int PLAYER_PADDLE_LEFT = 1;
-	public static final int PLAYER_PADDLE_RIGHT =-1;
-	public static final int FRAMES_PER_SECOND =60;
 	public static final float PADDLE_SPACE_FRACT = 100;
 	public static final float PADDLE_HALFWIDTH_FRACT = 100;
 	public static final float PADDLE_HALFHEIGHT_FRACT = 8;
@@ -38,4 +40,7 @@ public interface Constants
 
 	// GAME FRAMES PER SECOND
 	public static final int FPS = 60;
+
+	// GAME OTHER
+	public static final int PADDLE_MOVE_ACCEL = 2;
 }

@@ -26,7 +26,6 @@ public class GameActivity extends Activity implements View.OnClickListener, Sens
 
 	// bluetooth adapter & connection stats
 	private BluetoothAdapter mBtAdapter;
-	private int IS_CONNECT = 0;
 
 	// sensor stuff
 	private SensorManager mSenMng;
@@ -87,9 +86,10 @@ public class GameActivity extends Activity implements View.OnClickListener, Sens
 	public void onClick(View v)
 	{
 		button.setVisibility(View.GONE);
-		mConnectionManager.write("READY? fdjkafljdkas;l".getBytes());
+		mConnectionManager.write('r', 0);
 		registerSensorListener();
 		initGameView(true);
+		isReady = true;
 	}
 
 	public void registerSensorListener()
@@ -101,7 +101,9 @@ public class GameActivity extends Activity implements View.OnClickListener, Sens
 
 	public void initGameView(boolean button_pressed)
 	{
-		return;
+		mPongView = (PongView) findViewById(R.id.view);
+		mPongView.setConstants(mWriteHandler, button_pressed);
+		mPongView.update();
 	}
 
 	@Override
@@ -109,10 +111,7 @@ public class GameActivity extends Activity implements View.OnClickListener, Sens
 	{
 		if (e.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
 		{
-			if (e.values[0] > 1 || e.values[0] < -1)
-			{
-				mConnectionManager.write(Float.toString(e.values[0]).getBytes());
-			}
+			mPongView.setPaddle_playerVelChange(e.values[0]);
 		}
 
 	}
@@ -128,7 +127,20 @@ public class GameActivity extends Activity implements View.OnClickListener, Sens
 		@Override
 		public void handleMessage(Message msg)
 		{
-			return;
+			switch (msg.what)
+			{
+				case Constants.GAME_OVER:
+					mConnectionManager.write('g', 0);
+					break;
+				case Constants.SEND_BALL_ANGLE:
+					mConnectionManager.write('a', mPongView.getBallAngle());
+				case Constants.SEND_GAME_STATE:
+					mConnectionManager.write('x', mPongView.getBall_XRelativePos());
+					mConnectionManager.write('y', mPongView.getBall_YRelativePos());
+				case Constants.SEND_PADDLE:
+					mConnectionManager.write('p', mPongView.getPaddle_playerRelativePos());
+					break;
+			}
 		}
 	}
 
@@ -139,24 +151,33 @@ public class GameActivity extends Activity implements View.OnClickListener, Sens
 		{
 			switch (msg.what)
 			{
-				case Constants.READING:
-					String message = new String((byte[]) msg.obj, 0, msg.arg1);
-					if (message.contains("READY?"))
+				case Constants.READY:
+					if (!isReady)
 					{
 						button.setVisibility(View.GONE);
 						registerSensorListener();
 						initGameView(false);
 					}
-					else
-					{
-						GameActivity.this.mDebugView.setText(message);
-					}
+					break;
+				case Constants.BALL_ANG_READ:
+					mPongView.setBallAngle((float)msg.obj);
+				case Constants.BALLX_READ:
+					mPongView.setBallXRelative((float)msg.obj);
+					break;
+				case Constants.BALLY_READ:
+					mPongView.setBallYRelative((float)msg.obj);
+					break;
+				case Constants.PADDLE_READ:
+					mPongView.setPaddle_enemyPos((float)msg.obj);
+					break;
+				case Constants.GAME_OVER_READ:
+					mPongView.gameOver();
 					break;
 				case Constants.DISCONNECTED:
-					if (mSenMng != null)
-					{
-						mSenMng.unregisterListener(GameActivity.this);
-					}
+					//if (mSenMng != null)
+					//{
+					//	mSenMng.unregisterListener(GameActivity.this);
+					//}
 					finish();
 					mDebugView.setText("Disconnected");
 					break;
@@ -191,11 +212,14 @@ public class GameActivity extends Activity implements View.OnClickListener, Sens
 
 	public void killGame()
 	{
-		if (isReady)
-		{
-			mSenMng.unregisterListener(this);
-			mSenMng = null;
-		}
+	//	if (isReady)
+	//	{
+	//		isReady = false;
+	//		mSenMng.unregisterListener(this);
+	//		mSenMng = null;
+	//		mPongView.clearAnimation();
+	//		mPongView = null;
+	//	}
 		mConnectionManager.killAll();
 	}
 }

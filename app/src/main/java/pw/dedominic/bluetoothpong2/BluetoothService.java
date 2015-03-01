@@ -7,10 +7,11 @@ import android.bluetooth.BluetoothSocket;
 import android.os.Handler;
 import android.util.Log;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.DatagramSocket;
 import java.util.UUID;
 
 /**
@@ -91,14 +92,14 @@ public class BluetoothService
 		}
 	}
 
-	public void write(byte[] bytes)
+	public void write(char type, float val)
 	{
 		if (connected == null)
 		{
 			return;
 		}
 
-		connected.write(bytes);
+		connected.write(type, val);
 	}
 
 
@@ -207,9 +208,8 @@ public class BluetoothService
 	private class ConnectedThread extends Thread
 	{
 		private final BluetoothSocket connection;
-		private final InputStream in;
-		private final OutputStream out;
-		private int byte_size = 32;
+		private final DataInputStream in;
+		private final DataOutputStream out;
 
 		public ConnectedThread(BluetoothSocket socket)
 		{
@@ -225,22 +225,22 @@ public class BluetoothService
 			{
 				connectionChange(false);
 			}
-			in = tmpIn;
-			out = tmpOut;
+			in = new DataInputStream(tmpIn);
+			out = new DataOutputStream(tmpOut);
 		}
 
 		public void run()
 		{
-			byte[] buffer = new byte[byte_size];
-			int bytes_ret;
+			char type;
+			float value;
 
 			while (true)
 			{
 				try
 				{
-					bytes_ret = in.read(buffer);
-					readHandle.obtainMessage(Constants.READING, bytes_ret, -1,
-							buffer).sendToTarget();
+					type = in.readChar();
+					value = in.readFloat();
+					readHandle.obtainMessage(type, 0, 0, value).sendToTarget();
 					// try to send bytes to activity using a message
 				}
 				catch (IOException e)
@@ -252,11 +252,12 @@ public class BluetoothService
 			}
 		}
 
-		public void write(byte[] bytes)
+		public void write(char type, float value)
 		{
 			try
 			{
-				out.write(bytes);
+				out.writeChar(type);
+				out.writeFloat(value);
 			}
 			catch (IOException e)
 			{

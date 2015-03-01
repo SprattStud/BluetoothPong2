@@ -12,7 +12,8 @@
         android:theme="@style/AppTheme" >
         <activity
             android:name=".MainMenuActivity"
-            android:label="@string/app_name" >
+            android:label="@string/app_name"
+            android:screenOrientation="portrait" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -21,11 +22,13 @@
         </activity>
         <activity
             android:name=".GameActivity"
-            android:label="@string/title_activity_game" >
+            android:label="@string/title_activity_game"
+            android:screenOrientation="landscape" >
         </activity>
         <activity
             android:name=".BtConnectActivity"
-            android:label="@string/title_activity_bt_connect" >
+            android:label="@string/title_activity_bt_connect"
+            android:screenOrientation="portrait" >
         </activity>
     </application>
 

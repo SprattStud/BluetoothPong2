@@ -3,21 +3,23 @@ package pw.dedominic.bluetoothpong2;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Handler;
 import android.os.Message;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
-public class GameActivity extends ActionBarActivity implements View.OnClickListener, SensorEventListener
+public class GameActivity extends Activity implements View.OnClickListener, SensorEventListener
 {
-	public long delay = 0;
+	// lets the game know that sensor and view is running
+	private boolean isReady = false;
 
 	// button to start game
 	private Button button;
@@ -26,6 +28,10 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 	private BluetoothAdapter mBtAdapter;
 	private int IS_CONNECT = 0;
 
+	// sensor stuff
+	private SensorManager mSenMng;
+	private Sensor accelerometer;
+
 	// connection threads and communication handlers
 	private BluetoothService mConnectionManager;
 	private WriteHandler mWriteHandler = new WriteHandler();
@@ -33,6 +39,9 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 
 	// debug textview
 	private TextView mDebugView;
+
+	// GameView
+	private PongView mPongView;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
@@ -71,20 +80,41 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 		}
 		else
 		{
-			mDebugView.setText("Doing Nothing...");
+			registerSensorListener();
 		}
 	}
 
 	public void onClick(View v)
 	{
-		delay = System.currentTimeMillis();
-		mConnectionManager.write("This is a test".getBytes());
+		button.setVisibility(View.GONE);
+		mConnectionManager.write("READY? fdjkafljdkas;l".getBytes());
+		registerSensorListener();
+		initGameView(true);
+	}
+
+	public void registerSensorListener()
+	{
+		mSenMng = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+		accelerometer = mSenMng.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		mSenMng.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+	}
+
+	public void initGameView(boolean button_pressed)
+	{
+		return;
 	}
 
 	@Override
 	public void onSensorChanged(SensorEvent e)
 	{
-		return;
+		if (e.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
+		{
+			if (e.values[0] > 1 || e.values[0] < -1)
+			{
+				mConnectionManager.write(Float.toString(e.values[0]).getBytes());
+			}
+		}
+
 	}
 
 	@Override
@@ -108,54 +138,64 @@ public class GameActivity extends ActionBarActivity implements View.OnClickListe
 		public void handleMessage(Message msg)
 		{
 			switch (msg.what)
-{				case Constants.READING:
-					String message = new String((byte[])msg.obj, 0, msg.arg1);
-					if (message.equals("ACK"))
+			{
+				case Constants.READING:
+					String message = new String((byte[]) msg.obj, 0, msg.arg1);
+					if (message.contains("READY?"))
 					{
-						delay = System.currentTimeMillis() - delay;
-						mDebugView.setText(Long.toString(delay));
+						button.setVisibility(View.GONE);
+						registerSensorListener();
+						initGameView(false);
 					}
 					else
 					{
-						mDebugView.setText(message);
-						mConnectionManager.write("ACK".getBytes());
+						GameActivity.this.mDebugView.setText(message);
 					}
-
 					break;
 				case Constants.DISCONNECTED:
+					if (mSenMng != null)
+					{
+						mSenMng.unregisterListener(GameActivity.this);
+					}
 					finish();
+					mDebugView.setText("Disconnected");
+					break;
 				case Constants.CONNECTED:
 					button.setVisibility(View.VISIBLE);
 					mDebugView.setText("Connected");
 					break;
-				case Constants.READY:
-					button.setVisibility(View.GONE);
-					break;
-
 			}
 		}
 	}
 
 	@Override
-	public void onStop()
+	protected void onStop()
 	{
 		super.onStop();
-		mConnectionManager.killAll();
-		this.finish();
+		killGame();
 	}
 
 	@Override
-	public void onPause()
+	protected void onPause()
 	{
 		super.onPause();
-		mConnectionManager.killAll();
-		this.finish();
+		killGame();
 	}
 
 	@Override
-	public void onBackPressed() {
+	public void onBackPressed()
+	{
 		super.onBackPressed();
+		killGame();
+	}
+
+	public void killGame()
+	{
+		if (isReady)
+		{
+			mSenMng.unregisterListener(this);
+			mSenMng = null;
+		}
 		mConnectionManager.killAll();
-		this.finish();
 	}
 }

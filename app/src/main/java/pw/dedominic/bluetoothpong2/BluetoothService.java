@@ -5,10 +5,12 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.os.Handler;
+import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.DatagramSocket;
 import java.util.UUID;
 
 /**
@@ -30,6 +32,7 @@ public class BluetoothService
 	private ListenThread listener;
 	private JoinThread joiner;
 	private ConnectedThread connected;
+	private boolean isConnect = false;
 
 	public BluetoothService(Handler rHandle)
 	{
@@ -38,9 +41,14 @@ public class BluetoothService
 
 	private void connectionChange(boolean connect)
 	{
-		int message = connect ? Constants.CONNECTED : Constants.DISCONNECTED;
+		if (connect == isConnect)
+		{
+			return;
+		}
 
+		int message = connect ? Constants.CONNECTED : Constants.DISCONNECTED;
 		readHandle.obtainMessage(message).sendToTarget();
+		isConnect = connect;
 	}
 
 	public void listen()
@@ -101,7 +109,6 @@ public class BluetoothService
 	private class ListenThread extends Thread
 	{
 		private final BluetoothServerSocket srvSocket;
-		private boolean stop_running = false;
 
 		public ListenThread()
 		{
@@ -120,7 +127,7 @@ public class BluetoothService
 		public void run()
 		{
 			BluetoothSocket socket = null;
-			while (!stop_running)
+			while (true)
 			{
 				try
 				{
@@ -133,8 +140,8 @@ public class BluetoothService
 				if (socket != null)
 				{
 					connect(socket);
-					stop_running = true;
 					cancel();
+					break;
 				}
 			}
 		}
@@ -202,7 +209,7 @@ public class BluetoothService
 		private final BluetoothSocket connection;
 		private final InputStream in;
 		private final OutputStream out;
-		public boolean stop_running = false;
+		private int byte_size = 32;
 
 		public ConnectedThread(BluetoothSocket socket)
 		{
@@ -224,10 +231,10 @@ public class BluetoothService
 
 		public void run()
 		{
-			byte[] buffer = new byte[1024];
+			byte[] buffer = new byte[byte_size];
 			int bytes_ret;
 
-			while (!stop_running)
+			while (true)
 			{
 				try
 				{
@@ -238,9 +245,10 @@ public class BluetoothService
 				}
 				catch (IOException e)
 				{
-					stop_running = true;
+					Log.e("exception", e.getMessage());
 					connectionChange(false);
-				}
+					break;
+                }
 			}
 		}
 
@@ -252,6 +260,7 @@ public class BluetoothService
 			}
 			catch (IOException e)
 			{
+				Log.e("exception2", e.getMessage());
 			}
 		}
 
@@ -266,8 +275,6 @@ public class BluetoothService
 			catch (IOException e)
 			{
 			}
-
-			connectionChange(false);
 		}
 	}
 }

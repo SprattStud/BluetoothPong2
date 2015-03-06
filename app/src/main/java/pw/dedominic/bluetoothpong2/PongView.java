@@ -90,7 +90,7 @@ public class PongView extends View
 		paddle_space = getWidth() / Constants.PADDLE_SPACE_FRACT;
 
 		ball_radius = getWidth() / Constants.BALL_RADIUS_FRACT;
-		ball_speed = ball_radius / 4;
+		ball_speed = ball_radius;
 
 		ASPECT_RATIO = getWidth() / getHeight();
 	}

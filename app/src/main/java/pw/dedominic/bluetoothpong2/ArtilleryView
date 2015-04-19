@@ -1,0 +1,398 @@
+package main.java.pw.dedominic.bluetoothpong2;
+
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.os.Handler;
+import android.os.Message;
+import android.util.AttributeSet;
+import android.view.View;
+
+/**
+ * Created by Spratt on 4/18/2015.
+ * As artillery is stationary, altered the dimmensions to not use halfs
+ * Getters and Setters need altering as artillery does not move
+ * Needs an ontap function to spawn a shell from the appropriate artillery when you tap the screen
+ * Not sure how to re-implement newgame and gameover, my guess is either some sort of score when hitting artillery
+ * May not need even need this for the current demo
+ * See the functions for the various comments and issues specifically
+ */
+public class ArtilleryView extends View
+{
+    // to communicate back to game activity
+    private Handler mHandler;
+
+    // to redraw frame every 15 milliseconds
+    private DrawHandler mDrawHandler = new DrawHandler();
+
+    // booleans that control game initialization
+    // this one also defines side of the player artillery
+    private boolean isStateController = false; // who does the game logic?
+    private boolean isGameRunning = false;
+
+    // game pieces
+    private Shell shell;
+    private Artillery artillery_player;
+    private Artillery artillery_enemy;
+    private Paint color;
+
+    // game layout constants
+    private float artillery_width;
+    private float artillery_height;
+    private float artillery_space;
+
+    private float shell_radius;
+    private float shell_speed;
+    private float shell_angle;
+    private float ASPECT_RATIO;
+
+    public ArtilleryView(Context context, AttributeSet attrs) // didn't alter, shouldn't require changing
+    {
+        super(context, attrs);
+
+        color = new Paint();
+        color.setColor(Constants.PAINT_COLOR);
+    }
+
+    private void newGame() // ball is no longer spawned, so those clauses were removed
+    {
+        // both need to be rotated 45 degree so that they face the middle of the screen
+        // they can likely be stationary for now so they don't need to react to screen taps/tilts
+        artillery_player = new Artillery(artillery_width+artillery_space, getHeight()+artillery_height+artillery_space);
+        artillery_enemy = new Artillery(getWidth()+artillery_width+artillery_space, getHeight()+artillery_height+artillery_space);
+    }
+
+    public float newShellAngle() // spawn a shell towards screen tap - not implemented
+    {
+        return (float) ();
+    }
+
+    public void setConstants(Handler wHandler, boolean stateController) // may need tweaking as there are many 'balls' being used now
+    {
+        mHandler = wHandler;
+        isStateController = stateController;
+    }
+
+    private void setLayoutConstants() // may need tweaking to achieve proper dimmensions
+    {
+        artillery_height = getHeight() / Constants.ARTILLERY_HEIGHT_FRACT;
+        artillery_width = getWidth() / Constants.ARTILLERY_WIDTH_FRACT;
+        artillery_space = getWidth() / Constants.ARTILLERY_SPACE_FRACT;
+
+        shell_radius = getWidth() / Constants.SHELL_RADIUS_FRACT;
+        shell_speed = shell_radius / 4;
+
+        ASPECT_RATIO = getWidth() / getHeight();
+    }
+
+    private void checkShellCollision() // check comments for issues
+    {
+        if (shell.getLeft() <= 0 || shell.getRight() >= getWidth()) // shell leaves screen left or right
+        {
+            shell.delete();
+        }
+
+        if (shell.getTop() <= 0 || shell.getBottom() >= getHeight()) // shell leaves screen top or bottom
+        {
+            shell.delete();
+        }
+
+        if (shell.getX_vel() < 0) // shell hits artillery on left (player artillery)
+        // bounding may be incorrect
+        {
+            if (shell.y >= artillery_player.getTop() &&
+                    shell.y <= artillery_player.getBottom() &&
+                    shell.getLeft() <= artillery_space+artillery_width &&
+                    shell.getLeft() >= artillery_space)
+            {
+                shell.explode();
+            }
+        }
+        else // shell hit artillery on right (enemy artillery) bounding may be incorrect
+        //bounding may be incorrect
+        {
+            if (shell.y >= artillery_enemy.getTop() &&
+                    shell.y <= artillery_enemy.getBottom() &&
+                    shell.getRight() >= getWidth() - (artillery_space+paddle_width) &&
+                    shell.getRight() <= getWidth() - (artillery_space))
+            {
+                shell.explode();
+            }
+        }
+    }
+
+    public void update() // may need tweaking as there are many 'balls' being used now, so collision checking is altered
+    {
+        if (getHeight() == 0 || getWidth() == 0)
+        {
+            mDrawHandler.sleep(1);
+            return;
+        }
+
+        if (!isGameRunning)
+        {
+            setLayoutConstants();
+            newGame();
+            mDrawHandler.sleep(1);
+            isGameRunning = true;
+            return;
+        }
+
+        if (isStateController)
+        {
+            checkShellCollision();
+            mHandler.obtainMessage(Constants.SEND_GAME_STATE).sendToTarget();
+        }
+        else
+        {
+            mHandler.obtainMessage(Constants.SEND_ARTILLERY).sendToTarget();
+        }
+
+        mDrawHandler.sleep(1000 / Constants.FPS);
+    }
+
+    // getters and setters - commented out as the artillery doesn't move
+    public void setArtillery_playerVelChange(float move_val)
+    {
+        /*
+        if (move_val > 0 && paddle_player.getBottom() >= getHeight())
+        {
+            paddle_player.paddleMove(0);
+        }
+        else if (move_val < 0 && paddle_player.getTop() <= 0)
+        {
+            paddle_player.paddleMove(0);
+        }
+        else
+        {
+            paddle_player.paddleMove(move_val);
+        }
+        */
+    }
+
+    public void setPaddle_enemyPos(float y_val) // commented out as artillery doesn't move
+    {
+        //paddle_enemy.setY(y_val * getHeight());
+    }
+
+    public void setShellXRelative(float x_val)
+    {
+        shell.setX(x_val * getWidth());
+    }
+
+    public void setShellllYRelative(float y_val)
+    {
+        shell.setY(y_val * getHeight());
+    }
+
+    public void setShellAngle(float angle) // commented out as angle is now based on a screen tap
+    {
+        //shell_angle = angle;
+        //shell.setVel(angle);
+    }
+
+    public float getArtillery_playerRelativePos() // artillery doesn't move, may require altering
+    {
+        return artillery_player.getY() / getHeight();
+    }
+
+    public float getShell_XRelativePos()
+    {
+        return shell.getX() / getWidth();
+    }
+
+    public float getShell_YRelativePos()
+    {
+        return shell.getY() / getHeight();
+    }
+
+    public float getShellAngle()
+    {
+        return shell_angle;
+    }
+
+    public void gameOver() // not sure how to implement this in new game
+    {
+        newGame();
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas)
+    {
+        super.onDraw(canvas);
+
+        if (!isGameRunning)
+        {
+            return;
+        }
+
+        shell.draw(canvas);
+        artillery_enemy.draw(canvas);
+        artillery_player.draw(canvas);
+    }
+
+    private class DrawHandler extends Handler
+    {
+        @Override
+        public void handleMessage(Message msg)
+        {
+            ArtilleryView.this.update();
+            ArtilleryView.this.invalidate();
+        }
+
+        public void sleep(long time)
+        {
+            removeMessages(0);
+            sendMessageDelayed(obtainMessage(0), time);
+        }
+    }
+
+    private class Shell
+    {
+        // x and y coords
+        private float x;
+        private float y;
+
+        // amount shells move along x and y every frame
+        private float x_vel;
+        private float y_vel;
+
+        public Shell(float x_, float y_)
+        {
+            x = x_;
+            y = y_;
+            x_vel = 0;
+            y_vel = 0;
+        }
+
+        public void setVel(float ang)
+        {
+            x_vel = (float) Math.cos(ang) * shell_speed * ASPECT_RATIO;
+            y_vel = (float) Math.sin(ang) * shell_speed * ASPECT_RATIO;
+        }
+
+        public void setX(float x_val)
+        {
+            x = x_val;
+        }
+
+        public void setY(float y_val)
+        {
+            y = y_val;
+        }
+
+        public float getX()
+        {
+            return x;
+        }
+
+        public float getY()
+        {
+            return y;
+        }
+
+        public float getX_vel()
+        {
+            return x_vel;
+        }
+
+        public float getY_vel()
+        {
+            return y_vel;
+        }
+
+        public float getLeft()
+        {
+            return x-shell_radius;
+        }
+
+        public float getRight()
+        {
+            return x+shell_radius;
+        }
+
+        public float getTop()
+        {
+            return y-shell_radius;
+        }
+
+        public float getBottom()
+        {
+            return y+shell_radius;
+        }
+
+        public void delete()
+        {
+            // destroy the shell that exited the screen, this.shell or something
+        }
+
+        public void explode()
+        {
+            // damage artillery or add a point, something like that
+        }
+
+        public void draw(Canvas screen)
+        {
+            screen.drawCircle(x, y, shell_radius, color);
+            x += x_vel;
+            y += y_vel;
+        }
+    }
+
+    private class Artillery
+    {
+        private float x;
+        private float y;
+
+        public Paddle(float pos1, float pos2 )
+        {
+            x = pos1;
+            y = pos2;
+        }
+
+        public void setY(float newY)
+        {
+            y = newY;
+        }
+
+        // not sure how many getters and setters are needed as the artillery no longer moves
+        public float getY()
+        {
+            return y;
+        }
+
+        public float getX()
+        {
+            return x;
+        }
+
+        public float getBottom()
+        {
+            return y + artillery_height;
+        }
+
+        public float getTop()
+        {
+            return y - artillery_height;
+        }
+
+        public float getLeft()
+        {
+            return x - artillery_width;
+        }
+
+        public float getRight()
+        {
+            return x + artillery_width;
+        }
+
+        public void draw(Canvas screen)
+        {
+            screen.drawRect(getLeft(),
+                    getTop(),
+                    getRight(),
+                    getBottom(),
+                    color);
+        }
+    }
+}
